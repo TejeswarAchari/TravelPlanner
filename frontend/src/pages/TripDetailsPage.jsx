@@ -12,6 +12,7 @@ import { formatBudget, formatDate } from "../format.js";
 import StatusBadge from "../components/StatusBadge.jsx";
 import ActivityForm from "../components/ActivityForm.jsx";
 import Itinerary from "../components/Itinerary.jsx";
+import ItineraryCalendar from "../components/ItineraryCalendar.jsx";
 
 export default function TripDetailsPage() {
   const { id } = useParams();
@@ -19,6 +20,8 @@ export default function TripDetailsPage() {
   const [trip, setTrip] = useState(null);
   const [activities, setActivities] = useState([]);
   const [error, setError] = useState("");
+  const [itineraryView, setItineraryView] = useState("list");
+  const [calendarFocusRequest, setCalendarFocusRequest] = useState(null);
   // null = form hidden, {} = adding a new activity, otherwise the activity being edited
   const [formActivity, setFormActivity] = useState(null);
 
@@ -42,6 +45,9 @@ export default function TripDetailsPage() {
       await createActivity(id, activity);
     }
     await reloadActivities();
+    if (itineraryView === "calendar") {
+      setCalendarFocusRequest({ date: activity.date });
+    }
     setFormActivity(null);
   }
 
@@ -142,6 +148,27 @@ export default function TripDetailsPage() {
         )}
       </div>
 
+      <div className="mb-4 flex w-full gap-2 sm:w-auto" role="group" aria-label="Itinerary view">
+        {[
+          { value: "list", label: "List view" },
+          { value: "calendar", label: "Calendar view" },
+        ].map(({ value, label }) => (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={itineraryView === value}
+            onClick={() => setItineraryView(value)}
+            className={`flex-1 rounded border px-4 py-2 text-sm sm:flex-none ${
+              itineraryView === value
+                ? "border-blue-600 bg-blue-600 text-white"
+                : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       {formActivity && (
         <div className="mb-5">
           <ActivityForm
@@ -156,7 +183,17 @@ export default function TripDetailsPage() {
         </div>
       )}
 
-      <Itinerary activities={activities} onEdit={setFormActivity} onDelete={handleDeleteActivity} />
+      {itineraryView === "list" ? (
+        <Itinerary activities={activities} onEdit={setFormActivity} onDelete={handleDeleteActivity} />
+      ) : (
+        <ItineraryCalendar
+          activities={activities}
+          startDate={trip.start_date}
+          focusRequest={calendarFocusRequest}
+          onEdit={setFormActivity}
+          onDelete={handleDeleteActivity}
+        />
+      )}
     </div>
   );
 }

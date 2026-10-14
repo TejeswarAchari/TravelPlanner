@@ -14,9 +14,9 @@ function groupByDate(activities) {
   return groups;
 }
 
-export default function Itinerary({ activities, onEdit, onDelete }) {
+export default function Itinerary({ activities, onEdit, onDelete, emptyMessage = "No activities yet." }) {
   if (activities.length === 0) {
-    return <p className="text-sm text-gray-500">No activities yet.</p>;
+    return <p className="text-sm text-gray-500">{emptyMessage}</p>;
   }
 
   return (
