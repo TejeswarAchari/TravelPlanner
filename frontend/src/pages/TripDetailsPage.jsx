@@ -58,11 +58,12 @@ export default function TripDetailsPage() {
 
   async function handleDeleteTrip() {
     if (!window.confirm(`Delete "${trip.name}" and all its activities?`)) return;
+    setError("");
     try {
       await deleteTrip(id);
       navigate("/");
-    } catch (err) {
-      setError(err.message);
+    } catch {
+      setError("Unable to delete the trip. Please try again.");
     }
   }
 
