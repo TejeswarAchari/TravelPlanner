@@ -147,6 +147,7 @@ export default function TripDetailsPage() {
           <ActivityForm
             key={formActivity.id || "new"}
             initialActivity={formActivity.id ? formActivity : undefined}
+            activities={activities}
             minDate={trip.start_date}
             maxDate={trip.end_date}
             submitLabel={formActivity.id ? "Save activity" : "Add activity"}

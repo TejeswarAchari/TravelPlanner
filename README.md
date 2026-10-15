@@ -135,6 +135,8 @@ Example activity (its date must fall within the trip dates; `time` is optional, 
 }
 ```
 
+Activities in the same trip cannot share a date and specified time. Activities without a time are treated as unscheduled and may share a date with other activities.
+
 ## Running tests
 
 ```bash

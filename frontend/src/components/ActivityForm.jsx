@@ -3,15 +3,35 @@ import { useState } from "react";
 const emptyActivity = { title: "", date: "", time: "", location: "", notes: "" };
 
 const inputClass = "mt-1 w-full rounded border border-gray-300 bg-white px-3 py-2";
+const conflictMessage =
+  "An activity is already scheduled at this date and time. Choose a different time.";
 
 // minDate / maxDate are the trip's start and end dates.
-export default function ActivityForm({ initialActivity = emptyActivity, minDate, maxDate, submitLabel, onSubmit, onCancel }) {
+export default function ActivityForm({
+  initialActivity = emptyActivity,
+  activities = [],
+  minDate,
+  maxDate,
+  submitLabel,
+  onSubmit,
+  onCancel,
+}) {
   const [activity, setActivity] = useState(initialActivity);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const hasScheduleConflict =
+    activity.date &&
+    activity.time &&
+    activities.some(
+      (existing) =>
+        existing.id !== initialActivity.id &&
+        existing.date === activity.date &&
+        existing.time === activity.time
+    );
 
   function handleChange(event) {
     setActivity({ ...activity, [event.target.name]: event.target.value });
+    setError("");
   }
 
   async function handleSubmit(event) {
@@ -28,7 +48,11 @@ export default function ActivityForm({ initialActivity = emptyActivity, minDate,
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 rounded border border-gray-200 bg-white p-4">
-      {error && <p className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+      {(hasScheduleConflict ? conflictMessage : error) && (
+        <p className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+          {hasScheduleConflict ? conflictMessage : error}
+        </p>
+      )}
 
       <label className="block text-sm font-medium">
         Activity title
@@ -68,7 +92,7 @@ export default function ActivityForm({ initialActivity = emptyActivity, minDate,
       <div className="flex gap-3">
         <button
           type="submit"
-          disabled={saving}
+          disabled={saving || hasScheduleConflict}
           className="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
         >
           {submitLabel}

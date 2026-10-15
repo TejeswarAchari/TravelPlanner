@@ -7,6 +7,18 @@ from validation import parse_id, validate_activity
 bp = Blueprint("activities", __name__, url_prefix="/api")
 
 
+def has_schedule_conflict(trip_id, activity, exclude_activity_id=None):
+    if not activity["time"]:
+        return False
+
+    query = "SELECT 1 FROM activities WHERE trip_id = ? AND date = ? AND time = ?"
+    params = [trip_id, activity["date"], activity["time"]]
+    if exclude_activity_id is not None:
+        query += " AND id != ?"
+        params.append(exclude_activity_id)
+    return get_db().execute(query, params).fetchone() is not None
+
+
 @bp.get("/trips/<trip_id>/activities")
 def list_activities(trip_id):
     trip_id = parse_id(trip_id)
@@ -33,14 +45,17 @@ def create_activity(trip_id):
     activity, error = validate_activity(request.get_json(silent=True), trip)
     if error:
         return jsonify(error=error), 400
-
     db = get_db()
-    cursor = db.execute(
-        """INSERT INTO activities (trip_id, title, date, time, location, notes)
-           VALUES (:trip_id, :title, :date, :time, :location, :notes)""",
-        {**activity, "trip_id": trip_id},
-    )
-    db.commit()
+    with db:
+        db.execute("BEGIN IMMEDIATE")
+        if has_schedule_conflict(trip_id, activity):
+            return jsonify(error="An activity is already scheduled at this date and time. Choose a different time."), 400
+
+        cursor = db.execute(
+            """INSERT INTO activities (trip_id, title, date, time, location, notes)
+               VALUES (:trip_id, :title, :date, :time, :location, :notes)""",
+            {**activity, "trip_id": trip_id},
+        )
     return jsonify(dict(find_activity(cursor.lastrowid))), 201
 
 
@@ -57,14 +72,17 @@ def update_activity(activity_id):
     activity, error = validate_activity(request.get_json(silent=True), trip)
     if error:
         return jsonify(error=error), 400
-
     db = get_db()
-    db.execute(
-        """UPDATE activities SET title = :title, date = :date, time = :time,
-           location = :location, notes = :notes WHERE id = :id""",
-        {**activity, "id": activity_id},
-    )
-    db.commit()
+    with db:
+        db.execute("BEGIN IMMEDIATE")
+        if has_schedule_conflict(trip["id"], activity, exclude_activity_id=activity_id):
+            return jsonify(error="An activity is already scheduled at this date and time. Choose a different time."), 400
+
+        db.execute(
+            """UPDATE activities SET title = :title, date = :date, time = :time,
+               location = :location, notes = :notes WHERE id = :id""",
+            {**activity, "id": activity_id},
+        )
     return jsonify(dict(find_activity(activity_id)))
 
 
