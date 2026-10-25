@@ -1,18 +1,21 @@
 from flask import Blueprint, jsonify, request
 
+from auth import get_current_user, login_required
 from database import get_db
-from models import find_activity, find_trip
+from models import find_activity, find_activity_for_user, find_trip_for_user
 from validation import parse_id, validate_activity
 
 bp = Blueprint("activities", __name__, url_prefix="/api")
 
 
 @bp.get("/trips/<trip_id>/activities")
+@login_required
 def list_activities(trip_id):
+    user = get_current_user()
     trip_id = parse_id(trip_id)
     if trip_id is None:
         return jsonify(error="Invalid trip id"), 400
-    if find_trip(trip_id) is None:
+    if find_trip_for_user(trip_id, user["id"]) is None:
         return jsonify(error="Trip not found"), 404
 
     rows = get_db().execute(
@@ -22,11 +25,13 @@ def list_activities(trip_id):
 
 
 @bp.post("/trips/<trip_id>/activities")
+@login_required
 def create_activity(trip_id):
+    user = get_current_user()
     trip_id = parse_id(trip_id)
     if trip_id is None:
         return jsonify(error="Invalid trip id"), 400
-    trip = find_trip(trip_id)
+    trip = find_trip_for_user(trip_id, user["id"])
     if trip is None:
         return jsonify(error="Trip not found"), 404
 
@@ -45,15 +50,19 @@ def create_activity(trip_id):
 
 
 @bp.put("/activities/<activity_id>")
+@login_required
 def update_activity(activity_id):
+    user = get_current_user()
     activity_id = parse_id(activity_id)
     if activity_id is None:
         return jsonify(error="Invalid activity id"), 400
-    existing = find_activity(activity_id)
+    # Ownership is checked through the parent trip, so activity IDs cannot
+    # be used to bypass trip ownership.
+    existing = find_activity_for_user(activity_id, user["id"])
     if existing is None:
         return jsonify(error="Activity not found"), 404
 
-    trip = find_trip(existing["trip_id"])
+    trip = find_trip_for_user(existing["trip_id"], user["id"])
     activity, error = validate_activity(request.get_json(silent=True), trip)
     if error:
         return jsonify(error=error), 400
@@ -69,11 +78,13 @@ def update_activity(activity_id):
 
 
 @bp.delete("/activities/<activity_id>")
+@login_required
 def delete_activity(activity_id):
+    user = get_current_user()
     activity_id = parse_id(activity_id)
     if activity_id is None:
         return jsonify(error="Invalid activity id"), 400
-    if find_activity(activity_id) is None:
+    if find_activity_for_user(activity_id, user["id"]) is None:
         return jsonify(error="Activity not found"), 404
 
     db = get_db()

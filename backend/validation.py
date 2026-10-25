@@ -1,4 +1,5 @@
 import math
+import re
 from datetime import datetime
 
 # Each validate_* function returns (cleaned_values, error_message).
@@ -7,6 +8,11 @@ from datetime import datetime
 
 MAX_ID = 2**63 - 1  # largest integer SQLite can store
 MAX_BUDGET = 10**12
+
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+MAX_EMAIL_LENGTH = 254
+MIN_PASSWORD_LENGTH = 8
+MAX_PASSWORD_LENGTH = 256
 
 
 def parse_id(value):
@@ -76,6 +82,43 @@ def validate_trip(data):
         "description": clean_text(data, "description"),
     }
     return trip, None
+
+
+def normalize_email(value):
+    return value.strip().lower() if isinstance(value, str) else ""
+
+
+def validate_registration(data):
+    if not isinstance(data, dict):
+        return None, "Request body must be a JSON object"
+
+    email = normalize_email(data.get("email"))
+    if not email:
+        return None, "Email is required"
+    if len(email) > MAX_EMAIL_LENGTH or not EMAIL_RE.match(email):
+        return None, "Email must be a valid email address"
+
+    password = data.get("password")
+    if not isinstance(password, str) or not password:
+        return None, "Password is required"
+    if len(password) < MIN_PASSWORD_LENGTH:
+        return None, "Password must be at least 8 characters"
+    if len(password) > MAX_PASSWORD_LENGTH:
+        return None, "Password must be at most 256 characters"
+
+    return {"email": email, "password": password}, None
+
+
+def validate_login(data):
+    if not isinstance(data, dict):
+        return None, "Request body must be a JSON object"
+    email = normalize_email(data.get("email"))
+    password = data.get("password")
+    if not email or not isinstance(password, str) or not password:
+        return None, "Email and password are required"
+    if len(email) > MAX_EMAIL_LENGTH:
+        return None, "Email and password are required"
+    return {"email": email, "password": password}, None
 
 
 def validate_activity(data, trip):
